@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 name = "risk_summary"
 $LOAD_PATH << File.expand_path("lib", __dir__)
-require "#{name.tr("-", "/")}/version"
+require name.tr("-", "/")
 
 Gem::Specification.new name, RiskSummary::VERSION do |s|
   s.summary = "Collects Risk section from all merged PRs over a given commit range"
