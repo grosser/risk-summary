@@ -1,31 +1,27 @@
 # frozen_string_literal: true
+require "risk_summary/version"
 require "optparse"
 require "net/http"
 require "json"
 
 module RiskSummary
-  VERSION = "0.0.0"
-
   # copied from https://github.com/zendesk/samson/blob/master/app/models/changeset/pull_request.rb
   # modified to use unsafe regex stripping
   module RiskParser
     class << self
       def parse(text)
-        risks = parse_risks(text)
-        if risks.match?(/\A\s*-?\s*None\Z/i)
-          []
-        elsif risks.empty?
-          nil
-        else
-          risks
-        end
+        return :missing unless section = risk_section(text)
+        return :missing if section.strip.empty?
+        return :none if section.match?(/\A\s*-?\s*None\Z/i)
+        section
       end
 
       private
 
-      def parse_risks(body)
+      def risk_section(body)
         body_stripped = body.gsub(%r{</?[^>]+?>}, "") # not safe, but much simpler than pulling in nokogiri
-        section_content('Risks', body_stripped).to_s.rstrip.sub(/\A\s*\n/, "")
+        return nil unless section = section_content('Risks', body_stripped)
+        section.rstrip.sub(/\A\s*\n/, "")
       end
 
       def section_content(section_title, text)
@@ -42,7 +38,7 @@ module RiskSummary
   class << self
     def cli(argv)
       parse_cli_options! argv
-      token = fetch_token
+      token = ENV["GITHUB_TOKEN"] || token_from_gitconfig
       puts risks(*argv, token)
       0
     end
@@ -56,13 +52,14 @@ module RiskSummary
         http_get "/repos/#{repo}/commits/#{commit.fetch(:sha)}/pulls", token
       end.flatten(1).uniq
 
-      pulls.flat_map do |pull|
-        if risks = RiskParser.parse(pull.fetch(:body))
-          risks
-        else
-          ["- missing risks from [#{pull.fetch(:number)}](#{pull.fetch(:html_url)})"]
+      pulls.map do |pull|
+        risks = RiskParser.parse(pull.fetch(:body))
+        case risks
+        when :missing then "- missing risks from [##{pull.fetch(:number)}](#{pull.fetch(:html_url)})"
+        when :none then nil
+        else risks
         end
-      end
+      end.compact
     end
 
     def parse_cli_options!(argv)
@@ -93,12 +90,6 @@ module RiskSummary
       end
     end
 
-    def fetch_token
-      ENV["GITHUB_TOKEN"] ||
-        token_from_gitconfig ||
-        raise("Unable to find github token in GITHUB_TOKEN env var or git config github.token")
-    end
-
     def token_from_gitconfig
       result = `git config github.token`.chomp
       result if $?.success?
@@ -108,12 +99,12 @@ module RiskSummary
       url = "https://api.github.com#{path}"
       uri = URI(url)
       req = Net::HTTP::Get.new(uri)
-      req["Authorization"] = "token #{token}"
+      req["Authorization"] = "token #{token}" if token
       req["Accept"] = "application/vnd.github.groot-preview+json" # for /pulls requests
       res = Net::HTTP.start(uri.hostname, uri.port, use_ssl: true) do |http|
         http.request(req)
       end
-      raise "Bad response from #{url}:\n#{res.code}\n#{res.body}" unless res.code == "200"
+      raise "Bad response #{res.code} from #{url}:\n#{res.body}" unless res.code == "200"
       JSON.parse(res.body, symbolize_names: true)
     end
 

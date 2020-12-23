@@ -6,6 +6,7 @@ SingleCov.setup :minitest
 
 require "maxitest/global_must"
 require "maxitest/autorun"
+require "mocha/minitest"
+require "webmock/minitest"
 
-require "risk_summary/version"
 require "risk_summary"

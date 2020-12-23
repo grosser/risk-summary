@@ -1,11 +1,14 @@
 <!-- keep in sync with bundle exec ./bin/risk-summary --help -->
 Collects Risk section from all merged PRs over a given commit range.
 
-Your github token needs to be available as `GITHUB_TOKEN` env var or `git config github.token`.
+Private repos: set a github token as `GITHUB_TOKEN` env var or `git config github.token` (also increases your api rate limit).
 
 ```bash
 gem install risk-summary
-risk-summary v11..v20
+
+risk-summary zendesk/samson v3248...v3250
+- Low. Blue/Green naming could sneak into a k8s resource name unintentionally.
+- missing risks from [3894](https://github.com/zendesk/samson/pull/3894)
 ```
 
 TODO

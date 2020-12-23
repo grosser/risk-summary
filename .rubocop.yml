@@ -59,3 +59,6 @@ Lint/AssignmentInCondition:
 
 Style/GuardClause:
   Enabled: false
+
+Style/SymbolArray:
+  EnforcedStyle: brackets
