@@ -53,3 +53,9 @@ Layout/FirstMethodParameterLineBreak:
 # https://github.com/rubocop-hq/rubocop/issues/5891
 Style/SpecialGlobalVars:
   Enabled: false
+
+Lint/AssignmentInCondition:
+  Enabled: false
+
+Style/GuardClause:
+  Enabled: false
