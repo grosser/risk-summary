@@ -52,10 +52,9 @@ module RiskSummary
     def risks(repo, diff, token)
       compare = http_get "/repos/#{repo}/compare/#{diff}", token
 
-      # TODO: parallel threads
-      pulls = compare.fetch(:commits).flat_map do |commit|
+      pulls = parallel(compare.fetch(:commits), threads: 10) do |commit|
         http_get "/repos/#{repo}/commits/#{commit.fetch(:sha)}/pulls", token
-      end.uniq
+      end.flatten(1).uniq
 
       pulls.flat_map do |pull|
         if risks = RiskParser.parse(pull.fetch(:body))
@@ -116,6 +115,23 @@ module RiskSummary
       end
       raise "Bad response from #{url}:\n#{res.code}\n#{res.body}" unless res.code == "200"
       JSON.parse(res.body, symbolize_names: true)
+    end
+
+    def parallel(items, threads:)
+      results = Array.new(items.size)
+      items = items.each_with_index.to_a
+
+      Array.new([threads, items.size].min) do
+        Thread.new do
+          loop do
+            item, index = items.pop
+            break unless index
+            results[index] = yield item
+          end
+        end
+      end.each(&:join)
+
+      results
     end
   end
 end
