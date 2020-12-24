@@ -9,4 +9,5 @@ Gem::Specification.new "risk-summary", RiskSummary::VERSION do |s|
   s.files = `git ls-files lib/ bin/ MIT-LICENSE`.split("\n")
   s.license = "MIT"
   s.required_ruby_version = ">= 2.5.0"
+  s.executables = ["risk-summary"]
 end
